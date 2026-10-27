@@ -2,8 +2,8 @@
 
 Etapa: implementación y validación local del vertical slice de checkout; rediseño visual de marca Periferia integrado en el frontend.
 
-Decisión: memoria de desarrollo tras `CheckoutRepository`; producción bloqueada hasta implementar persistencia transaccional real. Pagos exclusivamente Stripe sandbox con eventos firmados; identidad Entra o acceso local explícito no productivo.
+Decisión: `CheckoutRepository` usa Prisma/PostgreSQL si existe `DATABASE_URL`; la memoria queda solo para desarrollo sin BD. Se incluyó la migración versionada para cotizaciones, pedidos y deduplicación de webhooks Stripe.
 
-Validación del rediseño: lint, typecheck, 10 pruebas Vitest y build correctos. Sigue pendiente inspección visual y E2E con sesión real.
+Validación: `prisma generate`, lint, typecheck, 10 pruebas Vitest y build correctos. La migración no se ejecutó porque aún no hay `DATABASE_URL` disponible.
 
-Siguiente: conectar repositorio transaccional, catálogo/precios comerciales aprobados y provisión de trabajadores/créditos; validar webhook y portal end-to-end con credenciales sandbox reales.
+Siguiente: crear/provisionar PostgreSQL, configurar `DATABASE_URL` y credenciales Stripe en Vercel, ejecutar `prisma migrate deploy` mediante el build y validar Stripe Checkout/webhook end-to-end.

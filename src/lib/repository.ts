@@ -1,6 +1,7 @@
 import "server-only";
 import type { Order, Product, Quote } from "./domain";
 import { developmentCatalog } from "./fixture";
+import { prisma } from "./prisma";
 
 export interface CheckoutRepository {
   catalog(): Promise<Product[]>;
@@ -36,11 +37,49 @@ class MemoryRepository implements CheckoutRepository {
   }
 }
 
-const globalRepository = globalThis as typeof globalThis & { __perxiaCheckoutRepository?: MemoryRepository };
+class PrismaRepository implements CheckoutRepository {
+  async catalog() { return structuredClone(developmentCatalog); }
+  async saveQuote(quote: Quote) {
+    await prisma.checkoutQuote.upsert({ where: { id: quote.id }, create: { id: quote.id, tenantId: quote.tenantId, payload: quote, expiresAt: new Date(quote.expiresAt), createdAt: new Date(quote.createdAt) }, update: { payload: quote, expiresAt: new Date(quote.expiresAt) } });
+  }
+  async quote(id: string, tenantId: string) {
+    const quote = await prisma.checkoutQuote.findFirst({ where: { id, tenantId } });
+    return quote ? quote.payload as unknown as Quote : null;
+  }
+  async saveOrder(order: Order) {
+    await prisma.checkoutOrder.upsert({ where: { id: order.id }, create: { id: order.id, tenantId: order.tenantId, accountId: order.accountId, payload: order, providerSessionId: order.providerSessionId, providerCustomerId: order.providerCustomerId, providerSubscriptionId: order.providerSubscriptionId, status: order.status, createdAt: new Date(order.createdAt), updatedAt: new Date(order.updatedAt) }, update: { payload: order, providerSessionId: order.providerSessionId, providerCustomerId: order.providerCustomerId, providerSubscriptionId: order.providerSubscriptionId, status: order.status, updatedAt: new Date(order.updatedAt) } });
+  }
+  async order(id: string, tenantId: string) {
+    const order = await prisma.checkoutOrder.findFirst({ where: { id, tenantId } });
+    return order ? order.payload as unknown as Order : null;
+  }
+  async orderByProviderSession(providerSessionId: string) {
+    const order = await prisma.checkoutOrder.findUnique({ where: { providerSessionId } });
+    return order ? order.payload as unknown as Order : null;
+  }
+  async ordersByProviderSubscription(providerSubscriptionId: string) {
+    const orders = await prisma.checkoutOrder.findMany({ where: { providerSubscriptionId } });
+    return orders.map((order) => order.payload as unknown as Order);
+  }
+  async orders(tenantId: string) {
+    const orders = await prisma.checkoutOrder.findMany({ where: { tenantId }, orderBy: { createdAt: "desc" } });
+    return orders.map((order) => order.payload as unknown as Order);
+  }
+  async processEvent(id: string, handler: () => Promise<boolean>) {
+    try { await prisma.stripeEvent.create({ data: { id, processedAt: new Date() } }); }
+    catch { return false; }
+    const applied = await handler();
+    if (!applied) await prisma.stripeEvent.delete({ where: { id } }).catch(() => undefined);
+    return applied;
+  }
+}
+
+const globalRepository = globalThis as typeof globalThis & { perxiaCheckoutRepository?: MemoryRepository; perxiaPrismaRepository?: PrismaRepository };
 
 export function repository(): CheckoutRepository {
-  if (process.env.NODE_ENV === "production" && process.env.PERXIA_DEMO_MODE !== "true") throw new Error("Production storage unavailable: a durable transactional repository adapter is required");
-  return (globalRepository.__perxiaCheckoutRepository ??= new MemoryRepository());
+  if (process.env.DATABASE_URL) return (globalRepository.perxiaPrismaRepository ??= new PrismaRepository());
+  if (process.env.NODE_ENV === "production") throw new Error("Production storage unavailable: configure DATABASE_URL and deploy Prisma migrations");
+  return (globalRepository.perxiaCheckoutRepository ??= new MemoryRepository());
 }
 
 export function createMemoryRepository(): CheckoutRepository { return new MemoryRepository(); }

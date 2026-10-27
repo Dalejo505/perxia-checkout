@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CheckoutQuote {
+  id        String   @id
+  tenantId  String
+  payload   Json
+  expiresAt DateTime
+  createdAt DateTime
+
+  @@index([tenantId, expiresAt])
+}
+
+model CheckoutOrder {
+  id                     String   @id
+  tenantId               String
+  accountId              String
+  payload                Json
+  providerSessionId      String?  @unique
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  status                 String
+  createdAt              DateTime
+  updatedAt              DateTime
+
+  @@index([tenantId, createdAt])
+  @@index([providerSubscriptionId])
+}
+
+model StripeEvent {
+  id          String   @id
+  processedAt DateTime
+}

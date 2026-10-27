@@ -11,6 +11,10 @@ Next.js 16 checkout for configurable worker subscriptions and one-time credit pa
 
 No Stripe key means the catalog, quotes, orders and empty billing view work, but checkout returns `PAYMENTS_UNAVAILABLE` (503). No fake payments are offered. Mixed weekly and monthly recurring items are represented as separate subscription items; Stripe handles the first invoice. The quote's `dueNow` is an indicative sum of listed line prices, not a guarantee of the final Stripe invoice (tax/proration not included).
 
+## Database and deployment
+
+Configure `DATABASE_URL` with a PostgreSQL connection string. Vercel runs `prisma migrate deploy && next build` through `vercel-build`, applying the versioned checkout storage migration before the application build. Use a managed PostgreSQL provider and set the same `DATABASE_URL` in Vercel Production; without it, production remains blocked.
+
 ## Authentication and deployment
 
 Auth.js uses Microsoft Entra ID unless `AUTH_MODE=local` is set in a non-production environment. Local mode exposes registration/login with per-user salted password hashes in volatile process memory; it never uses or reveals a shared access key. For Entra configure `AUTH_SECRET`, `AUTH_MICROSOFT_ENTRA_ID_ID`, `AUTH_MICROSOFT_ENTRA_ID_SECRET`, and the tenant-specific `AUTH_MICROSOFT_ENTRA_ID_ISSUER`. Register the callback `/api/auth/callback/microsoft-entra-id` at your deployment origin. Tenant and account IDs come from validated identity claims, never the client. Local auth is blocked in production. No wildcard/multitenant Entra issuer is recommended.
