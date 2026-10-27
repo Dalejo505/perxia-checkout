@@ -37,3 +37,12 @@ model StripeEvent {
   id          String   @id
   processedAt DateTime
 }
+
+model LocalAccount {
+  id           String   @id
+  tenantId     String   @unique
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}

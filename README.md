@@ -7,7 +7,7 @@ Next.js 16 checkout for configurable worker subscriptions and one-time credit pa
 1. `npm install`
 2. Copy `.env.example` to `.env.local` and set a random `AUTH_SECRET`. Keep `AUTH_MODE=local` for development-only registration and login.
 3. `npm run dev`; open the app's `/es`, `/en`, or `/pt-BR` route and create a local account. Accounts and password hashes live only in process memory and disappear when the server restarts.
-4. For real sandbox checkout, set `STRIPE_SECRET_KEY=sk_test_...` and `STRIPE_WEBHOOK_SECRET=whsec_...`; forward signed Stripe `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `invoice.payment_failed` and `customer.subscription.deleted` events to `/api/v1/webhooks/stripe`. Return from Checkout does **not** activate an order. A verified event and a fetched, paid, complete Stripe session do.
+4. For real sandbox checkout, set `STRIPE_SECRET_KEY=sk_test_...`. Also set `STRIPE_WEBHOOK_SECRET=whsec_...` and forward signed Stripe `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `invoice.payment_failed` and `customer.subscription.deleted` events to `/api/v1/webhooks/stripe`. Return from Checkout does **not** activate an order. A verified event and a fetched, paid, complete Stripe session do.
 
 No Stripe key means the catalog, quotes, orders and empty billing view work, but checkout returns `PAYMENTS_UNAVAILABLE` (503). No fake payments are offered. Mixed weekly and monthly recurring items are represented as separate subscription items; Stripe handles the first invoice. The quote's `dueNow` is an indicative sum of listed line prices, not a guarantee of the final Stripe invoice (tax/proration not included).
 

@@ -12,11 +12,14 @@ export interface PaymentGateway {
 
 export type BillingData = { paymentMethod: { brand: string; last4: string; expMonth: number; expYear: number } | null; invoices: { id: string; number: string | null; amount: number; status: string | null; hostedUrl: string | null; created: number }[]; subscriptions: { id: string; status: string; periodEnd: number | null }[]; upcoming: { amount: number; date: number | null } | null };
 
-export function paymentGateway(): PaymentGateway {
+function stripeClient() {
   const key = process.env.STRIPE_SECRET_KEY;
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!key || !secret || !key.startsWith("sk_test_") || !secret.startsWith("whsec_")) throw new DomainError("PAYMENTS_UNAVAILABLE", "Stripe sandbox key and webhook secret are required", 503);
-  const stripe = new Stripe(key);
+  if (!key || !key.startsWith("sk_test_")) throw new DomainError("PAYMENTS_UNAVAILABLE", "Stripe sandbox secret key is required", 503);
+  return new Stripe(key);
+}
+
+export function paymentGateway(): PaymentGateway {
+  const stripe = stripeClient();
   return {
     async checkout(order, origin) {
       const recurring = order.quote.lines.filter((line) => line.cadence !== "once");
@@ -47,7 +50,11 @@ export function paymentGateway(): PaymentGateway {
       const upcoming = active ? await stripe.invoices.createPreview({ customer: customerId, subscription: active.id }).then((invoice) => ({ amount: invoice.amount_due, date: invoice.period_end ?? null })).catch(() => null) : null;
       return { paymentMethod, invoices: invoices.data.map((invoice) => ({ id: invoice.id, number: invoice.number, amount: invoice.amount_paid, status: invoice.status, hostedUrl: invoice.hosted_invoice_url ?? null, created: invoice.created })), subscriptions: subscriptions.data.map((subscription) => ({ id: subscription.id, status: subscription.status, periodEnd: subscription.items.data[0]?.current_period_end ?? null })), upcoming };
     },
-    verify(payload, signature) { return stripe.webhooks.constructEvent(payload, signature, secret); },
+    verify(payload, signature) {
+      const secret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (!secret || !secret.startsWith("whsec_")) throw new DomainError("WEBHOOK_UNAVAILABLE", "Stripe webhook signing secret is required", 503);
+      return stripe.webhooks.constructEvent(payload, signature, secret);
+    },
     session(id) { return stripe.checkout.sessions.retrieve(id, { expand: ["subscription"] }); },
   };
 }
