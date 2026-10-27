@@ -1,6 +1,9 @@
 "use server";
 
 import { signIn } from "@/auth";
+import { localAccountExists } from "@/lib/local-accounts";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 function locale(formData: FormData) {
   const value = formData.get("locale");
@@ -17,12 +20,17 @@ export async function login(formData: FormData) {
 }
 
 export async function register(formData: FormData) {
+  const targetLocale = locale(formData);
+  if (await localAccountExists(formData.get("email"))) {
+    (await cookies()).set("perxia-register-error", "email-exists", { httpOnly: true, sameSite: "lax", maxAge: 60, path: `/${targetLocale}` });
+    redirect(`/${targetLocale}`);
+  }
   await signIn("local", {
     email: formData.get("email"),
     password: formData.get("password"),
     name: formData.get("name"),
     intent: "register",
-    redirectTo: `/${locale(formData)}`,
+    redirectTo: `/${targetLocale}`,
   });
 }
 

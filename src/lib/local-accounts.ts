@@ -45,6 +45,16 @@ async function verifyPassword(password: string, stored: string) {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
+export async function localAccountExists(input: unknown) {
+  const email = z.string().trim().email().max(254).transform((value) => value.toLowerCase()).safeParse(input);
+  if (!email.success) return false;
+  if (process.env.DATABASE_URL) {
+    try { return Boolean(await prisma.localAccount.findUnique({ where: { email: email.data }, select: { id: true } })); }
+    catch { return false; }
+  }
+  return Boolean(store().get(email.data));
+}
+
 export async function authorizeLocalAccount(input: unknown) {
   if (process.env.AUTH_MODE !== "local") return null;
   const parsed = credentialsSchema.safeParse(input);
