@@ -52,16 +52,20 @@ export async function authorizeLocalAccount(input: unknown) {
   const { email, password, intent, name } = parsed.data;
 
   if (process.env.DATABASE_URL) {
-    const account = await prisma.localAccount.findUnique({ where: { email } });
-    if (intent === "register") {
-      if (account || !name) return null;
-      const id = randomUUID();
-      const created = await prisma.localAccount.create({ data: { id, tenantId: `local-${id}`, name, email, passwordHash: await hashPassword(password) } }).catch(() => null);
-      if (!created) return null;
-      return { id: created.id, name: created.name, email: created.email, tenantId: created.tenantId, accountId: created.id };
+    try {
+      const account = await prisma.localAccount.findUnique({ where: { email } });
+      if (intent === "register") {
+        if (account || !name) return null;
+        const id = randomUUID();
+        const created = await prisma.localAccount.create({ data: { id, tenantId: `local-${id}`, name, email, passwordHash: await hashPassword(password) } }).catch(() => null);
+        if (!created) return null;
+        return { id: created.id, name: created.name, email: created.email, tenantId: created.tenantId, accountId: created.id };
+      }
+      if (!account || !(await verifyPassword(password, account.passwordHash))) return null;
+      return { id: account.id, name: account.name, email: account.email, tenantId: account.tenantId, accountId: account.id };
+    } catch {
+      return null;
     }
-    if (!account || !(await verifyPassword(password, account.passwordHash))) return null;
-    return { id: account.id, name: account.name, email: account.email, tenantId: account.tenantId, accountId: account.id };
   }
 
   if (process.env.NODE_ENV === "production" && process.env.PERXIA_DEMO_MODE !== "true") return null;

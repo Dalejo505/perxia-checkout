@@ -13,7 +13,7 @@ No Stripe key means the catalog, quotes, orders and empty billing view work, but
 
 ## Database and deployment
 
-Configure `DATABASE_URL` with a PostgreSQL connection string. Vercel runs `prisma migrate deploy && next build` through `vercel-build`, applying the versioned checkout storage migration before the application build. Use a managed PostgreSQL provider and set the same `DATABASE_URL` in Vercel Production; without it, production remains blocked.
+Configure `DATABASE_URL` with a PostgreSQL connection string. `vercel.json` makes Vercel run `prisma migrate deploy && next build` through `vercel-build`, applying the versioned checkout storage migrations before the application build. Use a managed PostgreSQL provider and set the same `DATABASE_URL` in Vercel Production; without it, production remains blocked.
 
 ## Authentication and deployment
 
