@@ -7,7 +7,7 @@ const demo = process.env.PERXIA_DEMO_MODE === "true";
 const local = process.env.AUTH_MODE === "local" && (process.env.NODE_ENV !== "production" || demo);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: process.env.NODE_ENV !== "production",
+  trustHost: true,
   session: { strategy: "jwt" },
   providers: local ? [Credentials({
     id: "local",
