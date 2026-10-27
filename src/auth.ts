@@ -3,7 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { authorizeLocalAccount } from "@/lib/local-accounts";
 
-const local = process.env.NODE_ENV !== "production" && process.env.AUTH_MODE === "local";
+const demo = process.env.PERXIA_DEMO_MODE === "true";
+const local = process.env.AUTH_MODE === "local" && (process.env.NODE_ENV !== "production" || demo);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: process.env.NODE_ENV !== "production",

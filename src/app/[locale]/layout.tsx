@@ -13,10 +13,11 @@ export default async function LocaleLayout({ children, params }: { children: Rea
   if (!locales.includes(value as Locale)) notFound();
   const locale = value as Locale;
   const t = copy[locale];
-  const session = process.env.NODE_ENV === "production" ? null : await auth();
+  const demoMode = process.env.PERXIA_DEMO_MODE === "true";
+  const session = process.env.NODE_ENV === "production" && !demoMode ? null : await auth();
   const signedIn = Boolean(session?.tenantId && session.accountId);
-  const productionBlocked = process.env.NODE_ENV === "production";
-  const localMode = process.env.AUTH_MODE === "local";
+  const productionBlocked = process.env.NODE_ENV === "production" && !demoMode;
+  const localMode = process.env.AUTH_MODE === "local" && (process.env.NODE_ENV !== "production" || demoMode);
   return <div className="min-h-screen">
     <a href="#main-content" className="skip-link">{t.skipContent}</a>
     <header className="border-b border-[#214b39] bg-black text-white"><div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-x-8 gap-y-3 px-5 py-4 sm:px-9">

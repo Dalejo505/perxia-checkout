@@ -39,7 +39,7 @@ class MemoryRepository implements CheckoutRepository {
 const globalRepository = globalThis as typeof globalThis & { __perxiaCheckoutRepository?: MemoryRepository };
 
 export function repository(): CheckoutRepository {
-  if (process.env.NODE_ENV === "production") throw new Error("Production storage unavailable: a durable transactional repository adapter is required");
+  if (process.env.NODE_ENV === "production" && process.env.PERXIA_DEMO_MODE !== "true") throw new Error("Production storage unavailable: a durable transactional repository adapter is required");
   return (globalRepository.__perxiaCheckoutRepository ??= new MemoryRepository());
 }
 

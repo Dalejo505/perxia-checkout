@@ -45,7 +45,7 @@ async function verifyPassword(password: string, stored: string) {
 }
 
 export async function authorizeLocalAccount(input: unknown) {
-  if (process.env.NODE_ENV === "production" || process.env.AUTH_MODE !== "local") return null;
+  if (process.env.AUTH_MODE !== "local" || (process.env.NODE_ENV === "production" && process.env.PERXIA_DEMO_MODE !== "true")) return null;
   const parsed = credentialsSchema.safeParse(input);
   if (!parsed.success) return null;
   const { email, password, intent, name } = parsed.data;
