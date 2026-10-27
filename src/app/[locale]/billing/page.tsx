@@ -1,0 +1,26 @@
+import Link from "next/link";
+import { ArrowUpRight, CalendarDays, CreditCard, ReceiptText, Repeat2 } from "lucide-react";
+import { identity } from "@/lib/identity";
+import { repository } from "@/lib/repository";
+import { paymentGateway, type BillingData } from "@/lib/payments";
+import { copy, money, type Locale } from "@/lib/i18n";
+import { Alert, Badge, Card, Separator } from "@/components/ui";
+import { PortalButton } from "@/components/actions";
+
+export default async function BillingPage({ params }: { params: Promise<{ locale: Locale }> }) {
+  const { locale } = await params;
+  const t = copy[locale];
+  let orders;
+  try { const tenant = await identity(); orders = await repository().orders(tenant.tenantId); } catch { return null; }
+  const customers = [...new Set(orders.map((order) => order.providerCustomerId).filter((id): id is string => Boolean(id)))];
+  const records: { id: string; data: BillingData }[] = [];
+  let unavailable = false;
+  for (const id of customers) { try { records.push({ id, data: await paymentGateway().billing(id) }); } catch { unavailable = true; } }
+  const date = (value: number) => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(value * 1000);
+  return <main className="mx-auto max-w-[1180px] px-5 py-12 pb-24 sm:px-9 md:py-16"><div className="flex flex-wrap items-end justify-between gap-6 border-b border-[#d5e1d6] pb-8"><div><p className="eyebrow">PERXIA / {t.account}</p><h1 className="mt-3 text-4xl tracking-tight sm:text-5xl">{t.billing}</h1><p className="mt-3 max-w-xl text-sm leading-6 text-[#48594f]">{t.billingLead}</p></div><Link className="inline-flex items-center gap-2 text-sm font-semibold text-[#15601d] hover:underline" href={`/${locale}`}>{t.configure}<ArrowUpRight size={17} aria-hidden="true" /></Link></div>
+    {unavailable && <Alert tone="warning" className="mt-6">{t.paymentUnavailable}</Alert>}
+    <div className="mt-8 grid gap-4 md:grid-cols-2">{records.length === 0 && <Card className="border-l-4 border-l-[#15601d] p-8 text-sm text-[#48594f] md:col-span-2">{t.empty}</Card>}{records.map(({ id, data }) => <div key={id} className="contents"><Card className="flex flex-col p-6 sm:p-7"><span className="flex size-10 items-center justify-center rounded-[5px] bg-[#e5f4e8] text-[#15601d]"><CreditCard size={21} aria-hidden="true" /></span><h2 className="mt-5 text-xl">{t.method}</h2><p className="mt-2 text-sm leading-6 text-[#48594f]">{data.paymentMethod ? `${data.paymentMethod.brand.toUpperCase()} •••• ${data.paymentMethod.last4} · ${data.paymentMethod.expMonth}/${data.paymentMethod.expYear}` : t.empty}</p><div className="mt-auto pt-7"><PortalButton customerId={id} locale={locale} /></div></Card><Card className="p-6 sm:p-7"><span className="flex size-10 items-center justify-center rounded-[5px] bg-[#e5f4e8] text-[#15601d]"><CalendarDays size={21} aria-hidden="true" /></span><h2 className="mt-5 text-xl">{t.upcoming}</h2><p className="mt-2 text-3xl text-[#063635] display">{data.upcoming ? money(data.upcoming.amount, locale) : "—"}</p><p className="mt-2 text-sm text-[#48594f]">{data.upcoming?.date ? date(data.upcoming.date) : t.empty}</p></Card></div>)}</div>
+    <div className="mt-12 grid gap-8 md:grid-cols-2"><section aria-labelledby="subscriptions-title"><h2 id="subscriptions-title" className="mb-4 flex items-center gap-2 text-xl"><Repeat2 size={20} className="text-[#15601d]" aria-hidden="true" />{t.subscriptions}</h2><Card className="divide-y divide-[#d5e1d6] p-5 sm:p-6">{orders.length === 0 && <p className="text-sm text-[#48594f]">{t.empty}</p>}{orders.map((order) => <Link href={`/${locale}/orders/${order.id}`} className="flex items-center justify-between gap-4 py-4 text-sm transition-colors hover:text-[#15601d] first:pt-0 last:pb-0" key={order.id}><div className="min-w-0"><p className="font-semibold">{order.quote.lines.filter((line) => line.kind === "worker").map((line) => line.productName).join(", ") || t.credits}</p><p className="mt-1 break-all text-xs text-[#48594f]">#{order.id}</p></div><Badge className="shrink-0">{order.status === "active" ? t.active : t.pending}</Badge></Link>)}</Card></section><section aria-labelledby="history-title"><h2 id="history-title" className="mb-4 flex items-center gap-2 text-xl"><ReceiptText size={20} className="text-[#15601d]" aria-hidden="true" />{t.history}</h2><Card className="divide-y divide-[#d5e1d6] p-5 sm:p-6">{records.every(({ data }) => data.invoices.length === 0) && <p className="text-sm text-[#48594f]">{t.empty}</p>}{records.flatMap(({ data }) => data.invoices).map((invoice) => <div key={invoice.id} className="flex items-center justify-between gap-4 py-4 text-sm first:pt-0 last:pb-0"><div><p className="font-semibold">{invoice.number ?? invoice.id}</p><p className="mt-1 text-xs text-[#48594f]">{date(invoice.created)} · {invoice.status}</p></div><div className="flex shrink-0 items-center gap-3"><span className="font-semibold">{money(invoice.amount, locale)}</span>{invoice.hostedUrl && <a href={invoice.hostedUrl} target="_blank" rel="noopener noreferrer" aria-label={`${t.history}: ${invoice.number ?? invoice.id}`} className="text-[#15601d] hover:text-[#063635]"><ArrowUpRight size={17} aria-hidden="true" /></a>}</div></div>)}</Card></section></div>
+    {records.length > 0 && <div className="mt-10"><Separator /></div>}
+  </main>;
+}
