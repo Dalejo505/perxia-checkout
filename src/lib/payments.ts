@@ -14,7 +14,8 @@ export type BillingData = { paymentMethod: { brand: string; last4: string; expMo
 
 function stripeClient() {
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key || !key.startsWith("sk_test_")) throw new DomainError("PAYMENTS_UNAVAILABLE", "Stripe sandbox secret key is required", 503);
+  if (!key) throw new DomainError("PAYMENTS_UNAVAILABLE", "Stripe secret key is not configured in this deployment", 503);
+  if (!key.startsWith("sk_test_")) throw new DomainError("PAYMENTS_UNAVAILABLE", "Stripe test secret key must start with sk_test_", 503);
   return new Stripe(key);
 }
 
